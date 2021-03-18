@@ -14,6 +14,10 @@ const userSchema = new Schema(
       unique: true,
       required: true,
     },
+    role: {
+      type: String,
+      default: "subscriber",
+    },
     picture: String,
     stripe_account_id: "",
     stripe_seller: {},

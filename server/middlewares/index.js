@@ -1,6 +1,51 @@
 import admin from "../firebase";
 import User from "../models/user";
 
+export async function isAuthenticated(req, res, next) {
+  const { authorization } = req.headers;
+
+  if (!authorization) return res.status(401).send({ message: "Unauthorized" });
+
+  if (!authorization.startsWith("Bearer"))
+    return res.status(401).send({ message: "Unauthorized" });
+
+  const split = authorization.split("Bearer ");
+  if (split.length !== 2)
+    return res.status(401).send({ message: "Unauthorized" });
+
+  const token = split[1];
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    console.log("decodedToken", JSON.stringify(decodedToken));
+    res.locals = {
+      ...res.locals,
+      uid: decodedToken.uid,
+      role: decodedToken.role,
+      email: decodedToken.email,
+    };
+    return next();
+  } catch (err) {
+    console.error(`${err.code} -  ${err.message}`);
+    return res.status(401).send({ message: "Unauthorized" });
+  }
+}
+
+export function isAuthorized(opts, allowSameUser) {
+  return (req, res, next) => {
+    const { role, email, uid } = res.locals;
+    const { id } = req.params;
+
+    if (opts.allowSameUser && id && uid === id) return next();
+
+    if (!role) return res.status(403).send();
+
+    if (opts.hasRole.includes(role)) return next();
+
+    return res.status(403).send();
+  };
+}
+
 export const findOrCreateUser = async (req, res, next) => {
   // console.log("REQ HEADERS TOKEN", req.headers.token);
   try {
